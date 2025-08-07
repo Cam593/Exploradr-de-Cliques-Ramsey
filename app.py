@@ -1,7 +1,7 @@
 """
 app.py — Explorador interactivo de cliques monocromáticos y arcoíris
 
-Lanza con
+Ejecuta:
     streamlit run app.py
 """
 import random
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl  # acceso a mpl.colormaps
 
 # ------------------------------------------------------------
-# 🖌️  Configuración global de la página
+# 🖌️  Configuración global
 # ------------------------------------------------------------
 st.set_page_config(
     page_title="Explorador de Cliques Ramsey",
@@ -24,10 +24,9 @@ st.set_page_config(
 st.title("🌈 Explorador de cliques monocromáticos y arcoíris")
 st.markdown(
     """
-    Ajusta los parámetros en la barra lateral para generar un grafo aleatorio, después
-    analiza si contiene cliques **monocromáticos** (todas sus aristas del mismo color) o
-    **arcoíris** (todas las aristas de colores distintos).  
-    Los colores de arista se eligen de la paleta *tab10* de Matplotlib.
+    Ajusta los parámetros en la barra lateral para generar un grafo aleatorio, luego
+    inspecciona si contiene cliques **monocromáticos** (todas las aristas del mismo color)
+    o **arcoíris** (todas las aristas con colores distintos).
     """
 )
 
@@ -53,11 +52,11 @@ with st.sidebar:
     regenerate = st.button("🔄 Generar grafo")
 
 # ------------------------------------------------------------
-# 📊  Generación del grafo coloreado
+# 📊  Generación del grafo
 # ------------------------------------------------------------
 
 def random_colored_graph(n: int, p: float, k: int, seed: int | None = None) -> nx.Graph:
-    """Genera un grafo G(n,p) y colorea sus aristas aleatoriamente con k colores."""
+    """Genera un grafo Erdős–Rényi G(n,p) y colorea sus aristas con k colores."""
     if seed is not None:
         random.seed(seed)
     G = nx.Graph()
@@ -72,26 +71,24 @@ def random_colored_graph(n: int, p: float, k: int, seed: int | None = None) -> n
 def get_graph(n, p, k, seed):
     return random_colored_graph(n, p, k, seed)
 
-# Si el usuario pulsó el botón o es la primera carga, obtenemos el grafo
 if regenerate or "G" not in st.session_state:
     st.session_state["G"] = get_graph(n_vertices, edge_prob, num_colors, seed)
 
 G: nx.Graph = st.session_state["G"]
 
 # ------------------------------------------------------------
-# 🔎  Predicados y búsqueda de cliques
+# 🔎  Utilidades de cliques
 # ------------------------------------------------------------
 
 def is_monochromatic_clique(G: nx.Graph, verts: tuple[int, ...]) -> bool:
-    colors = {G[u][v]["color"] for u, v in combinations(verts, 2)}
-    return len(colors) == 1
+    return len({G[u][v]["color"] for u, v in combinations(verts, 2)}) == 1
 
 def is_rainbow_clique(G: nx.Graph, verts: tuple[int, ...]) -> bool:
     colors = [G[u][v]["color"] for u, v in combinations(verts, 2)]
     return len(colors) == len(set(colors))
 
 def find_cliques(G: nx.Graph, k: int, predicate, limit: int):
-    found: list[tuple[int, ...]] = []
+    found = []
     for verts in combinations(G.nodes, k):
         if all(G.has_edge(u, v) for u, v in combinations(verts, 2)) and predicate(G, verts):
             found.append(verts)
@@ -103,35 +100,30 @@ mono_cliques = find_cliques(G, k_mono, is_monochromatic_clique, max_show)
 rain_cliques = find_cliques(G, k_rain, is_rainbow_clique, max_show)
 
 # ------------------------------------------------------------
-# 🖼️  Visualización
+# 🎨  Colormaps compatibles (Matplotlib 3.7 ↔ 3.8)
 # ------------------------------------------------------------
 
 def _get_cmap(name: str, n: int):
-    """Devuelve una *ListedColormap* con `n` colores.
-
-    Se adapta a versiones viejas ⇄ nuevas de Matplotlib:
-    - En Matplotlib ≥3.8 existe `mpl.colormaps`, pero su `.get_cmap` solo admite 1 parámetro.
-    - En versiones anteriores podemos usar `plt.get_cmap(name, lut=n)`.
-    """
-    # Intento 1 – API clásica (Matplotlib ≤3.7)
     try:
-        return plt.get_cmap(name, n)
+        return plt.get_cmap(name, n)  # Matplotlib ≤3.7
     except TypeError:
-        pass  # Firma no acepta 2 args o no existe
-    # Intento 2 – API nueva (Matplotlib ≥3.8)
-    try:
-        return mpl.colormaps.get_cmap(name).resampled(n)
-    except Exception:
-        # Último recurso: colormap original sin re‑muestrear
-        return plt.get_cmap(name)
+        try:
+            return mpl.colormaps.get_cmap(name).resampled(n)  # Matplotlib ≥3.8
+        except Exception:
+            return plt.get_cmap(name)
 
+# ------------------------------------------------------------
+# 🖼️  Dibujado de grafos
+# ------------------------------------------------------------
+
+def _layout_pos(graph: nx.Graph, layout: str):
+    if layout == "spring":
+        return nx.spring_layout(graph, seed=1)
+    # circular_layout no acepta 'seed'
+    return nx.circular_layout(graph)
 
 def draw_graph(graph: nx.Graph, layout: str):
-    pos = {
-        "spring": nx.spring_layout,
-        "circular": nx.circular_layout,
-    }[layout](graph, seed=1)
-
+    pos = _layout_pos(graph, layout)
     cmap = _get_cmap("tab10", num_colors)
     edge_colors = [cmap(graph[u][v]["color"]) for u, v in graph.edges]
 
@@ -141,9 +133,9 @@ def draw_graph(graph: nx.Graph, layout: str):
         pos,
         edge_color=edge_colors,
         node_color="lightsteelblue",
-        with_labels=True,
         node_size=650,
         width=2,
+        with_labels=True,
         ax=ax,
     )
     ax.axis("off")
@@ -162,75 +154,63 @@ def draw_subgraph(parent: nx.Graph, verts: tuple[int, ...], title: str):
         pos,
         edge_color=edge_colors,
         node_color="white",
-        with_labels=True,
         node_size=500,
         width=3,
+        with_labels=True,
         ax=ax,
     )
     ax.set_title(title)
     ax.axis("off")
     return fig
 
-# ----  Distribución en la página ----
+# ------------------------------------------------------------
+# 📐  Layout de la página
+# ------------------------------------------------------------
 col_left, col_right = st.columns([3, 2])
 
 with col_left:
     st.subheader("Grafo completo")
-    fig_main = draw_graph(G, layout_option)
-    st.pyplot(fig_main)
+    st.pyplot(draw_graph(G, layout_option))
 
 with col_right:
     st.subheader("Resumen")
     st.metric("Vértices", len(G.nodes))
     st.metric("Aristas", len(G.edges))
-    st.metric(
-        f"Cliques mono K{k_mono}",
-        len(mono_cliques),
-        delta="✔️" if mono_cliques else "✖️",
-    )
-    st.metric(
-        f"Cliques arcoíris K{k_rain}",
-        len(rain_cliques),
-        delta="✔️" if rain_cliques else "✖️",
-    )
+    st.metric(f"Cliques mono K{k_mono}", len(mono_cliques), delta="✔️" if mono_cliques else "✖️")
+    st.metric(f"Cliques arcoíris K{k_rain}", len(rain_cliques), delta="✔️" if rain_cliques else "✖️")
 
-# ----  Subgrafos ----
+# Subgrafos
 if mono_cliques or rain_cliques:
     st.divider()
     st.subheader("Subgrafos destacados")
-
     tabs = st.tabs([f"Monocromáticos ({len(mono_cliques)})", f"Arcoíris ({len(rain_cliques)})"])
 
-    # Monocromáticos
     with tabs[0]:
         if mono_cliques:
             cols = st.columns(min(len(mono_cliques), 4))
             for i, verts in enumerate(mono_cliques):
                 with cols[i % 4]:
-                    fig = draw_subgraph(G, verts, f"Mono-K{k_mono}: {verts}")
-                    st.pyplot(fig)
+                    st.pyplot(draw_subgraph(G, verts, f"Mono-K{k_mono}: {verts}"))
         else:
             st.info("No se encontraron cliques monocromáticos.")
 
-    # Arcoíris
     with tabs[1]:
         if rain_cliques:
             cols = st.columns(min(len(rain_cliques), 4))
             for i, verts in enumerate(rain_cliques):
                 with cols[i % 4]:
-                    fig = draw_subgraph(G, verts, f"Rainbow-K{k_rain}: {verts}")
-                    st.pyplot(fig)
+                    st.pyplot(draw_subgraph(G, verts, f"Rainbow-K{k_rain}: {verts}"))
         else:
             st.info("No se encontraron cliques arcoíris.")
 else:
     st.warning("No se encontraron subgrafos que cumplan los criterios seleccionados.")
 
 # ------------------------------------------------------------
-# 📌  Nota al pie
+# ℹ️  Nota al pie
 # ------------------------------------------------------------
 with st.expander("Detalles de implementación"):
     st.write(
-        "El grafo se genera con un modelo Erdős–Rényi \(G(n, p)\). "
-        "Las combinaciones de \(k\) vértices se exploran de forma exhaustiva "
-        "hasta encontrar el número máximo de ejemplos indicado."
+        "El grafo se genera con un modelo Erdős–Rényi \(G(n,p)\). "
+        "Para cada conjunto de \(k\) vértices se comprueba si forman un clique y si "
+        "cumplen la propiedad monocromática o arcoíris."
     )
