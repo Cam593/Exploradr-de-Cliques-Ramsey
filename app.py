@@ -12,6 +12,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl  # acceso a mpl.colormaps
 
+
 # ------------------------------------------------------------
 # 🖌️  Configuración global
 # ------------------------------------------------------------
@@ -213,4 +214,38 @@ with st.expander("Detalles de implementación"):
         "El grafo se genera con un modelo Erdős–Rényi \(G(n,p)\). "
         "Para cada conjunto de \(k\) vértices se comprueba si forman un clique y si "
         "cumplen la propiedad monocromática o arcoíris."
+    )
+with st.expander("Conceptos clave ⋯", expanded=False):
+    st.markdown(
+        """
+        ### ¿Qué es un grafo?
+        Un grafo es un par \(G = (V,E)\) formado por un conjunto de **vértices** \(V\)
+        y un conjunto de **aristas** \(E\) que unen pares de vértices. En este proyecto
+        trabajamos con **grafos simples** (sin lazos ni aristas múltiples) donde, además,
+        cada arista recibe un **color** entero de `0` a `num_colors−1`.
+
+        ### Clique
+        Un **clique** \(K_k\) es un subconjunto de \(k\) vértices donde **todas** las
+        aristas posibles entre ellos están presentes. Es decir, forman un subgrafo
+        completo.
+
+        - *Clique monocromático*: todas esas aristas comparten **el mismo color**.
+        - *Clique arcoíris*: cada arista tiene un **color distinto**.
+
+        ### (Rainbow) Ramsey numbers
+        El número de Ramsey clásico \(R(s,t)\) es el mínimo \(n\) tal que **cualquier**
+        coloreo rojo/azul de las aristas de un \(K_n\) contiene un clique rojo de tamaño
+        \(s\) **o** un clique azul de tamaño \(t\).  
+        En la variante **arcoíris** (rainbow Ramsey), se pregunta por el mínimo \(n\)
+        para garantizar un clique arcoíris \(K_k\) o un clique monocromático \(K_k\)
+        cuando las aristas se colorean con varios colores.
+
+        > En esta app no calculamos ese número de forma teórica (lo cual es muy difícil),
+        > sino que **exploramos experimentalmente**: generamos muchos grafos aleatorios y
+        buscamos cliques que cumplan alguna de las dos condiciones.
+
+        ---
+        **Para saber más**: consulta [Graham, Rothschild & Spencer, *Ramsey Theory*]
+        o la reciente survey de rainbow Ramsey numbers de J. Fox.
+        """
     )
