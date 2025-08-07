@@ -107,11 +107,23 @@ rain_cliques = find_cliques(G, k_rain, is_rainbow_clique, max_show)
 # ------------------------------------------------------------
 
 def _get_cmap(name: str, n: int):
-    """Compatibilidad con Matplotlib ≥3.8."""
+    """Devuelve una *ListedColormap* con `n` colores.
+
+    Se adapta a versiones viejas ⇄ nuevas de Matplotlib:
+    - En Matplotlib ≥3.8 existe `mpl.colormaps`, pero su `.get_cmap` solo admite 1 parámetro.
+    - En versiones anteriores podemos usar `plt.get_cmap(name, lut=n)`.
+    """
+    # Intento 1 – API clásica (Matplotlib ≤3.7)
     try:
-        return mpl.colormaps.get_cmap(name, n)
-    except AttributeError:
         return plt.get_cmap(name, n)
+    except TypeError:
+        pass  # Firma no acepta 2 args o no existe
+    # Intento 2 – API nueva (Matplotlib ≥3.8)
+    try:
+        return mpl.colormaps.get_cmap(name).resampled(n)
+    except Exception:
+        # Último recurso: colormap original sin re‑muestrear
+        return plt.get_cmap(name)
 
 
 def draw_graph(graph: nx.Graph, layout: str):
