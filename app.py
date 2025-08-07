@@ -10,7 +10,7 @@ from itertools import combinations
 import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+import matplotlib as mpl  # acceso a mpl.colormaps
 
 # ------------------------------------------------------------
 # 🖌️  Configuración global de la página
@@ -106,13 +106,21 @@ rain_cliques = find_cliques(G, k_rain, is_rainbow_clique, max_show)
 # 🖼️  Visualización
 # ------------------------------------------------------------
 
+def _get_cmap(name: str, n: int):
+    """Compatibilidad con Matplotlib ≥3.8."""
+    try:
+        return mpl.colormaps.get_cmap(name, n)
+    except AttributeError:
+        return plt.get_cmap(name, n)
+
+
 def draw_graph(graph: nx.Graph, layout: str):
     pos = {
         "spring": nx.spring_layout,
         "circular": nx.circular_layout,
     }[layout](graph, seed=1)
 
-    cmap = cm.get_cmap("tab10", num_colors)
+    cmap = _get_cmap("tab10", num_colors)
     edge_colors = [cmap(graph[u][v]["color"]) for u, v in graph.edges]
 
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -132,7 +140,7 @@ def draw_graph(graph: nx.Graph, layout: str):
 
 def draw_subgraph(parent: nx.Graph, verts: tuple[int, ...], title: str):
     H = parent.subgraph(verts)
-    cmap = cm.get_cmap("tab10", num_colors)
+    cmap = _get_cmap("tab10", num_colors)
     edge_colors = [cmap(parent[u][v]["color"]) for u, v in H.edges]
     pos = nx.circular_layout(H)
 
@@ -187,7 +195,7 @@ if mono_cliques or rain_cliques:
             cols = st.columns(min(len(mono_cliques), 4))
             for i, verts in enumerate(mono_cliques):
                 with cols[i % 4]:
-                    fig = draw_subgraph(G, verts, f"Mono‑K{k_mono}: {verts}")
+                    fig = draw_subgraph(G, verts, f"Mono-K{k_mono}: {verts}")
                     st.pyplot(fig)
         else:
             st.info("No se encontraron cliques monocromáticos.")
@@ -198,7 +206,7 @@ if mono_cliques or rain_cliques:
             cols = st.columns(min(len(rain_cliques), 4))
             for i, verts in enumerate(rain_cliques):
                 with cols[i % 4]:
-                    fig = draw_subgraph(G, verts, f"Rainbow‑K{k_rain}: {verts}")
+                    fig = draw_subgraph(G, verts, f"Rainbow-K{k_rain}: {verts}")
                     st.pyplot(fig)
         else:
             st.info("No se encontraron cliques arcoíris.")
