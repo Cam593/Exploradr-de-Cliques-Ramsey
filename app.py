@@ -331,7 +331,6 @@ if st.session_state['go_explore'] and st.session_state['explore_payload'] is not
     for n, s, pr in zip(n_vals, succ, probs):
         csv_lines.append(f"{n},{s},{params['trials']},{pr:.6f}")
     csv = "\n".join(csv_lines)
-
     st.download_button(
         "⬇️ Descargar resultados (CSV)",
         data=csv.encode("utf-8"),
@@ -381,34 +380,132 @@ with st.expander("Detalles de implementación"):
 with st.expander("Conceptos clave ⋯", expanded=False):
     st.markdown(
         """
-        ### ¿Qué es un grafo?
-        Un grafo es un par \(G = (V,E)\) formado por un conjunto de **vértices** \(V\)
-        y un conjunto de **aristas** \(E\) que unen pares de vértices. En este proyecto
-        trabajamos con **grafos simples** (sin lazos ni aristas múltiples) donde, además,
-        cada arista recibe un **color** entero de `0` a `num_colors−1`.
+        ## Vocabulario esencial
 
-        ### Clique
-        Un **clique** \(K_k\) es un subconjunto de \(k\) vértices donde **todas** las
-        aristas posibles entre ellos están presentes. Es decir, forman un subgrafo
-        completo.
+        **Grafo:** estructura $G=(V,E)$ con vértices $V$ y aristas $E\subseteq\{\{u,v\}:u\ne v\}$.
+        Aquí usamos grafos **simples** y asignamos a cada arista un **color** 0,1,2,…
 
-        - *Clique monocromático*: todas esas aristas comparten **el mismo color**.
-        - *Clique arcoíris*: cada arista tiene un **color distinto**.
+        **Clique $K_k$:** subconjunto de $k$ vértices donde todas las aristas posibles están presentes
+        (subgrafo completo).  
+        • **Monocromático:** todas sus aristas comparten color.  
+        • **Arcoíris:** todas sus aristas tienen colores distintos.
 
-        ### (Rainbow) Ramsey numbers
-        El número de Ramsey clásico \(R(s,t)\) es el mínimo \(n\) tal que **cualquier**
-        coloreo rojo/azul de las aristas de un \(K_n\) contiene un clique rojo de tamaño
-        \(s\) **o** un clique azul de tamaño \(t\).  
-        En la variante **arcoíris** (rainbow Ramsey), se pregunta por el mínimo \(n\)
-        para garantizar un clique arcoíris \(K_k\) o un clique monocromático \(K_k\)
-        cuando las aristas se colorean con varios colores.
+        **2-coloración / Número de Ramsey clásico $R(s,t)$:**
+        el mínimo $n$ tal que, coloreando las aristas de $K_n$ en **dos colores** (rojo/azul),
+        siempre aparece un $K_s$ rojo **o** un $K_t$ azul.
 
-        > En esta app no calculamos ese número de forma teórica (lo cual es muy difícil),
-        > sino que **exploramos experimentalmente**: generamos muchos grafos aleatorios y
-        buscamos cliques que cumplan alguna de las dos condiciones.
+        **Ejemplo (por qué $R(3,3)=6$):** en un $K_6$, fija un vértice $v$. De sus 5 aristas,
+        al menos 3 comparten color (palomar). Supón que $va,vb,vc$ son rojas.  
+        – Si alguna de $ab,bc,ac$ es roja ⇒ triángulo rojo.  
+        – Si no, las tres son azules ⇒ triángulo azul.  
+        En $K_5$ existe una 2-coloración sin triángulo monocromático, así que el mínimo es 6.
 
-        ---
-        **Para saber más**: consulta [Graham, Rothschild & Spencer, *Ramsey Theory*]
-        o la reciente survey de rainbow Ramsey numbers de J. Fox.
+        **Variantes arcoíris (Rainbow/Anti-Ramsey):**
+        con **varios colores**, preguntamos si aparece (i) un $K_k$ monocromático o (ii) un $K_k$
+        **arcoíris**. A esta disyuntiva la llamamos aquí *Ramsey arcoíris*. Muchos casos exactos están abiertos.
+
+        **¿Qué hace el *Modo exploración*?**
+        Para un $k$ y un rango de $n$, generamos muchos grafos $G(n,p)$ y estimamos la
+        **probabilidad empírica** de que exista el patrón objetivo. El primer $n$ que supera
+        un umbral (p. ej. 50%) sugiere desde qué tamaño el patrón es probable en promedio
+        (no es una prueba teórica).
         """
     )
+
+# ------------------------------------------------------------
+# 📘  Demostraciones de Ramsey (fijas)
+# ------------------------------------------------------------
+COLORS_2 = {0: "#1f77b4", 1: "#d62728"}  # azul/rojo
+
+def _ekey(u: int, v: int) -> tuple[int,int]:
+    return (u, v) if u < v else (v, u)
+
+@st.cache_resource(show_spinner=False)
+def _k6_graph():
+    G6 = nx.complete_graph(6)
+    pos_circ = nx.circular_layout(G6)
+    pos_spring = nx.spring_layout(G6, seed=2)
+    return G6, pos_circ, pos_spring
+
+if 'r33_colors' not in st.session_state:
+    # Inicialización aleatoria de la coloración de K6 (2 colores)
+    edges6 = [_ekey(u,v) for u in range(6) for v in range(u+1,6)]
+    st.session_state['r33_colors'] = {e: random.randint(0,1) for e in edges6}
+
+
+def _find_mono_triangle_from_colors(colors: dict[tuple[int,int], int]):
+    for a,b,c in combinations(range(6), 3):
+        e1,e2,e3 = _ekey(a,b), _ekey(a,c), _ekey(b,c)
+        cset = {colors[e1], colors[e2], colors[e3]}
+        if len(cset) == 1:
+            return (a,b,c), list(cset)[0]
+    return None, None
+
+
+def _draw_k6(colors: dict[tuple[int,int], int], layout: str = 'circular'):
+    G6, pos_circ, pos_spring = _k6_graph()
+    pos = pos_circ if layout == 'circular' else pos_spring
+    fig, ax = plt.subplots(figsize=(5,5))
+    nx.draw(
+        G6, pos,
+        edge_color=[COLORS_2[colors[_ekey(u,v)]] for u,v in G6.edges()],
+        node_color='lightsteelblue', node_size=650, width=2,
+        with_labels=True, ax=ax,
+    )
+    tri, col = _find_mono_triangle_from_colors(colors)
+    if tri:
+        edgelist = [_ekey(tri[0],tri[1]), _ekey(tri[0],tri[2]), _ekey(tri[1],tri[2])]
+        nx.draw_networkx_edges(G6, pos, edgelist=edgelist, width=6,
+                               edge_color=COLORS_2[col], ax=ax)
+    ax.axis('off')
+    return fig, tri, col
+
+st.divider()
+st.subheader("R(3,3): cualquier 2‑coloración de $K_6$ tiene un triángulo monocromático")
+
+c1, c2, c3 = st.columns([1,1,2])
+with c1:
+    if st.button("🎲 Aleatorizar colores", key="r33_rand"):
+        for e in st.session_state['r33_colors']:
+            st.session_state['r33_colors'][e] = random.randint(0,1)
+        # reinicializa widgets
+        for u in range(6):
+            for v in range(u+1,6):
+                st.session_state.setdefault(f"r33_{u}_{v}", bool(st.session_state['r33_colors'][_ekey(u,v)]))
+                st.session_state[f"r33_{u}_{v}"] = bool(st.session_state['r33_colors'][_ekey(u,v)])
+with c2:
+    if st.button("🔵 Todo azul", key="r33_all_blue"):
+        for e in st.session_state['r33_colors']:
+            st.session_state['r33_colors'][e] = 0
+        for u in range(6):
+            for v in range(u+1,6):
+                st.session_state[f"r33_{u}_{v}"] = False
+with c3:
+    if st.button("🔴 Todo rojo", key="r33_all_red"):
+        for e in st.session_state['r33_colors']:
+            st.session_state['r33_colors'][e] = 1
+        for u in range(6):
+            for v in range(u+1,6):
+                st.session_state[f"r33_{u}_{v}"] = True
+
+# Selector de layout de la demo
+layout_r33 = st.radio("Layout", ["circular", "spring"], horizontal=True, key="r33_layout")
+
+# Controles de aristas (15 toggles)
+cols = st.columns(5)
+for idx, (u,v) in enumerate((_ekey(u,v) for u in range(6) for v in range(u+1,6))):
+    key = f"r33_{u}_{v}"
+    if key not in st.session_state:
+        st.session_state[key] = bool(st.session_state['r33_colors'][(u,v)])
+    with cols[idx % 5]:
+        val = st.toggle(f"{u}-{v}", value=st.session_state[key], key=key)
+        st.session_state['r33_colors'][(u,v)] = int(val)
+
+fig_demo, tri, col = _draw_k6(st.session_state['r33_colors'], layout=layout_r33)
+st.pyplot(fig_demo)
+
+if tri:
+    color_name = "rojo" if col == 1 else "azul"
+    st.success(f"Siempre aparece un triángulo monocromático. Ejemplo hallado: {tri} ({color_name}).")
+else:
+    st.error("Algo raro ocurrió: no se detectó triángulo monocromático (revisa la inicialización).")
