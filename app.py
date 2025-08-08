@@ -327,7 +327,13 @@ if st.session_state['go_explore'] and st.session_state['explore_payload'] is not
         st.warning("Ningún n del rango alcanzó el umbral seleccionado.")
 
     # Descargar CSV
-    csv = 'n,successes,trials,prob
+    csv = 'n,successes,trials,prob\n' + '\n'.join(
+    f"{n},{s},{params['trials']},{pr:.6f}" for n, s, pr in zip(n_vals, succ, probs)
+)
+st.download_button("⬇️ Descargar resultados (CSV)",
+                   data=csv.encode('utf-8'),
+                   file_name='exploracion_ramsey.csv',
+                   mime='text/csv')
 ' + '
 '.join(
         f"{n},{s},{params['trials']},{pr:.6f}" for n, s, pr in zip(n_vals, succ, probs)
