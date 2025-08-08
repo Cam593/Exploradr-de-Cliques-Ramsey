@@ -329,7 +329,9 @@ if st.session_state['go_explore'] and st.session_state['explore_payload'] is not
     # Descargar CSV
     csv = 'n,successes,trials,prob
 ' + '
-'.join(f"{n},{s},{params['trials']},{p:.6f}" for n,s,p in zip(n_vals, succ, probs))
+'.join(
+        f"{n},{s},{params['trials']},{pr:.6f}" for n, s, pr in zip(n_vals, succ, probs)
+    )
     st.download_button("⬇️ Descargar resultados (CSV)", data=csv.encode('utf-8'), file_name='exploracion_ramsey.csv', mime='text/csv')
 
     # Consumimos el disparador para evitar repetir automáticamente
@@ -370,7 +372,6 @@ with st.expander("Detalles de implementación"):
         "Para cada conjunto de \(k\) vértices se comprueba si forman un clique y si "
         "cumplen la propiedad monocromática o arcoíris."
     )
-
 
 with st.expander("Conceptos clave ⋯", expanded=False):
     st.markdown(
