@@ -12,6 +12,38 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl  # acceso a mpl.colormaps
 
+# ------------------------------------------------------------
+# 📚  Módulo de conocimiento: números de Ramsey clásicos (2 colores)
+# ------------------------------------------------------------
+# Tabla mínima de valores exactos conocidos y algunas cotas.
+# Claves simétricas: (min(s,t), max(s,t)).
+EXACT_R: dict[tuple[int, int], int] = {
+    (3, 3): 6,
+    (3, 4): 9,
+    (3, 5): 14,
+    (3, 6): 18,
+    (4, 4): 18,
+    (4, 5): 25,
+    (3, 7): 23,
+}
+BOUNDS_R: dict[tuple[int, int], tuple[int, int]] = {
+    # Ejemplo conocido: R(5,5) aún abierto
+    (5, 5): (43, 49),
+}
+
+def ramsey_lookup(s: int, t: int):
+    """Devuelve info de R(s,t) para el caso clásico de 2 colores.
+
+    Retorna un dict con llaves {type, value} (exact) o {type, lower, upper} (bounds),
+    o None si no tenemos el dato en esta tabla mínima.
+    """
+    a, b = sorted((s, t))
+    if (a, b) in EXACT_R:
+        return {"type": "exact", "value": EXACT_R[(a, b)]}
+    if (a, b) in BOUNDS_R:
+        L, U = BOUNDS_R[(a, b)]
+        return {"type": "bounds", "lower": L, "upper": U}
+    return None
 
 # ------------------------------------------------------------
 # 🖌️  Configuración global
@@ -180,6 +212,31 @@ with col_right:
     st.metric(f"Cliques mono K{k_mono}", len(mono_cliques), delta="✔️" if mono_cliques else "✖️")
     st.metric(f"Cliques arcoíris K{k_rain}", len(rain_cliques), delta="✔️" if rain_cliques else "✖️")
 
+    # --- Conocimiento teórico: Ramsey clásico 2 colores ---
+    st.markdown("---")
+    st.caption("Conocimiento teórico: números de Ramsey (2 colores)")
+    info = ramsey_lookup(k_mono, k_mono)
+    if info is None:
+        st.info(
+            "Valores exactos sólo se conocen para casos pequeños. "
+            "Para k mayores mostramos resultados **experimentales** de tu grafo.")
+    elif info["type"] == "exact":
+        R = info["value"]
+        st.success(f"R({k_mono},{k_mono}) = {R} (exacto conocido)")
+        if n_vertices >= R:
+            st.write(
+                f"Con n = {n_vertices} ≥ R, **cualquier 2-coloración** de K_n contiene "
+                f"un K_{k_mono} monocromático (teorema de Ramsey).")
+        else:
+            st.warning(
+                f"Con n = {n_vertices} < R, no hay garantía teórica en 2 colores; "
+                "esta app explora ejemplos aleatorios.")
+    else:  # bounds
+        st.warning(
+            f"Para R({k_mono},{k_mono}) sólo se conocen cotas: "
+            f"{info['lower']} ≤ R ≤ {info['upper']}.")
+        st.caption("Tu simulación aporta intuición pero no prueba el valor exacto.")
+
 # Subgrafos
 if mono_cliques or rain_cliques:
     st.divider()
@@ -207,7 +264,7 @@ else:
     st.warning("No se encontraron subgrafos que cumplan los criterios seleccionados.")
 
 # ------------------------------------------------------------
-# ℹ️  Nota al pie
+# ℹ️  Nota al pie y material extra
 # ------------------------------------------------------------
 with st.expander("Detalles de implementación"):
     st.write(
@@ -215,6 +272,7 @@ with st.expander("Detalles de implementación"):
         "Para cada conjunto de \(k\) vértices se comprueba si forman un clique y si "
         "cumplen la propiedad monocromática o arcoíris."
     )
+
 with st.expander("Conceptos clave ⋯", expanded=False):
     st.markdown(
         """
