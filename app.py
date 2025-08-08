@@ -327,18 +327,17 @@ if st.session_state['go_explore'] and st.session_state['explore_payload'] is not
         st.warning("Ningún n del rango alcanzó el umbral seleccionado.")
 
     # Descargar CSV
-    csv = 'n,successes,trials,prob\n' + '\n'.join(
-    f"{n},{s},{params['trials']},{pr:.6f}" for n, s, pr in zip(n_vals, succ, probs)
-)
-st.download_button("⬇️ Descargar resultados (CSV)",
-                   data=csv.encode('utf-8'),
-                   file_name='exploracion_ramsey.csv',
-                   mime='text/csv')
+    csv = 'n,successes,trials,prob
 ' + '
 '.join(
         f"{n},{s},{params['trials']},{pr:.6f}" for n, s, pr in zip(n_vals, succ, probs)
     )
-    st.download_button("⬇️ Descargar resultados (CSV)", data=csv.encode('utf-8'), file_name='exploracion_ramsey.csv', mime='text/csv')
+    st.download_button(
+        "⬇️ Descargar resultados (CSV)",
+        data=csv.encode('utf-8'),
+        file_name='exploracion_ramsey.csv',
+        mime='text/csv',
+    )
 
     # Consumimos el disparador para evitar repetir automáticamente
     st.session_state['go_explore'] = False
@@ -382,34 +381,34 @@ with st.expander("Detalles de implementación"):
 with st.expander("Conceptos clave ⋯", expanded=False):
     st.markdown(
         """
-        ## Vocabulario esencial
+        ### ¿Qué es un grafo?
+        Un grafo es un par \(G = (V,E)\) formado por un conjunto de **vértices** \(V\)
+        y un conjunto de **aristas** \(E\) que unen pares de vértices. En este proyecto
+        trabajamos con **grafos simples** (sin lazos ni aristas múltiples) donde, además,
+        cada arista recibe un **color** entero de `0` a `num_colors−1`.
 
-        **Grafo:** estructura $G=(V,E)$ con vértices $V$ y aristas $E\\subseteq\\{\\{u,v\\}:u\\ne v\\}$.
-        Aquí usamos grafos **simples** y asignamos a cada arista un **color** 0,1,2,…
+        ### Clique
+        Un **clique** \(K_k\) es un subconjunto de \(k\) vértices donde **todas** las
+        aristas posibles entre ellos están presentes. Es decir, forman un subgrafo
+        completo.
 
-        **Clique $K_k$:** subconjunto de $k$ vértices donde todas las aristas posibles están presentes
-        (subgrafo completo).  
-        • **Monocromático:** todas sus aristas comparten color.  
-        • **Arcoíris:** todas sus aristas tienen colores distintos.
+        - *Clique monocromático*: todas esas aristas comparten **el mismo color**.
+        - *Clique arcoíris*: cada arista tiene un **color distinto**.
 
-        **2-coloración / Número de Ramsey clásico $R(s,t)$:**
-        el mínimo $n$ tal que, coloreando las aristas de $K_n$ en **dos colores** (rojo/azul),
-        siempre aparece un $K_s$ rojo **o** un $K_t$ azul.
+        ### (Rainbow) Ramsey numbers
+        El número de Ramsey clásico \(R(s,t)\) es el mínimo \(n\) tal que **cualquier**
+        coloreo rojo/azul de las aristas de un \(K_n\) contiene un clique rojo de tamaño
+        \(s\) **o** un clique azul de tamaño \(t\).  
+        En la variante **arcoíris** (rainbow Ramsey), se pregunta por el mínimo \(n\)
+        para garantizar un clique arcoíris \(K_k\) o un clique monocromático \(K_k\)
+        cuando las aristas se colorean con varios colores.
 
-        **Ejemplo (por qué $R(3,3)=6$):** en un $K_6$, fija un vértice $v$. De sus 5 aristas,
-        al menos 3 comparten color (palomar). Supón que $va,vb,vc$ son rojas.  
-        – Si alguna de $ab,bc,ac$ es roja ⇒ triángulo rojo.  
-        – Si no, las tres son azules ⇒ triángulo azul.  
-        En $K_5$ existe una 2-coloración sin triángulo monocromático, así que el mínimo es 6.
+        > En esta app no calculamos ese número de forma teórica (lo cual es muy difícil),
+        > sino que **exploramos experimentalmente**: generamos muchos grafos aleatorios y
+        buscamos cliques que cumplan alguna de las dos condiciones.
 
-        **Variantes arcoíris (Rainbow/Anti-Ramsey):**
-        con **varios colores**, preguntamos si aparece (i) un $K_k$ monocromático o (ii) un $K_k$
-        **arcoíris**. A esta disyuntiva la llamamos aquí *Ramsey arcoíris*. Muchos casos exactos están abiertos.
-
-        **¿Qué hace el *Modo exploración*?**
-        Para un $k$ y un rango de $n$, generamos muchos grafos $G(n,p)$ y estimamos la
-        **probabilidad empírica** de que exista el patrón objetivo. El primer $n$ que supera
-        un umbral (p. ej. 50%) sugiere desde qué tamaño el patrón es probable en promedio
-        (no es una prueba teórica).
+        ---
+        **Para saber más**: consulta [Graham, Rothschild & Spencer, *Ramsey Theory*]
+        o la reciente survey de rainbow Ramsey numbers de J. Fox.
         """
     )
