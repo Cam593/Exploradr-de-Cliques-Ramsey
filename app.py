@@ -6,6 +6,7 @@ Ejecuta:
 """
 import random
 from itertools import combinations
+import io
 
 import streamlit as st
 import networkx as nx
@@ -84,6 +85,18 @@ with st.sidebar:
 
     regenerate = st.button("🔄 Generar grafo")
 
+    # --- Modo exploración (experimental) ---
+    with st.expander("Modo exploración (experimental)"):
+        explore_on = st.toggle("Activar modo exploración", value=False)
+        if explore_on:
+            target = st.selectbox("Patrón objetivo", ["monocromático", "arcoíris", "mono o arcoíris"], index=2)
+            k_target = st.number_input("k objetivo", 2, 10, min(k_mono, 5))
+            n_min, n_max = st.slider("Rango de n", 3, 80, (max(3, k_target), max(3, k_target + 10)))
+            trials = st.number_input("Simulaciones por n", 5, 500, 50, step=5)
+            threshold = st.slider("Umbral de probabilidad", 0.1, 1.0, 0.5, 0.05)
+            go_explore = st.button("▶ Ejecutar exploración")
+            st.caption("Nota: la complejidad crece rápido con k; mantén k pequeño (≤5).")
+
 # ------------------------------------------------------------
 # 📊  Generación del grafo
 # ------------------------------------------------------------
@@ -131,6 +144,42 @@ def find_cliques(G: nx.Graph, k: int, predicate, limit: int):
 
 mono_cliques = find_cliques(G, k_mono, is_monochromatic_clique, max_show)
 rain_cliques = find_cliques(G, k_rain, is_rainbow_clique, max_show)
+
+# ------------------------------------------------------------
+# 🔬  Modo exploración: barrido de n con múltiples simulaciones
+# ------------------------------------------------------------
+
+def _exists_pattern(G: nx.Graph, k: int, target: str) -> bool:
+    if target == "monocromático":
+        return len(find_cliques(G, k, is_monochromatic_clique, 1)) > 0
+    if target == "arcoíris":
+        return len(find_cliques(G, k, is_rainbow_clique, 1)) > 0
+    # mono o arcoíris
+    return (
+        len(find_cliques(G, k, is_monochromatic_clique, 1)) > 0
+        or len(find_cliques(G, k, is_rainbow_clique, 1)) > 0
+    )
+
+
+def run_exploration(target: str, k: int, n_min: int, n_max: int, trials: int, p: float, colors: int):
+    n_values = list(range(n_min, n_max + 1))
+    successes = []
+    progress = st.progress(0, text="Simulando…")
+    total = len(n_values) * trials
+    done = 0
+    for n in n_values:
+        s = 0
+        for _ in range(trials):
+            Gtmp = random_colored_graph(n, p, colors, seed=None)
+            if _exists_pattern(Gtmp, k, target):
+                s += 1
+            done += 1
+            if done % max(1, total // 100) == 0:
+                progress.progress(done / total, text=f"n={n}  ({done}/{total})")
+        successes.append(s)
+    progress.empty()
+    probs = [s / trials for s in successes]
+    return n_values, successes, probs
 
 # ------------------------------------------------------------
 # 🎨  Colormaps compatibles (Matplotlib 3.7 ↔ 3.8)
@@ -236,6 +285,55 @@ with col_right:
             f"Para R({k_mono},{k_mono}) sólo se conocen cotas: "
             f"{info['lower']} ≤ R ≤ {info['upper']}.")
         st.caption("Tu simulación aporta intuición pero no prueba el valor exacto.")
+
+# --- Resultados del modo exploración ---
+if 'explore_payload' not in st.session_state:
+    st.session_state['explore_payload'] = None
+
+if 'go_explore' not in st.session_state:
+    st.session_state['go_explore'] = False
+
+# Disparador desde la barra lateral
+try:
+    if explore_on and go_explore:
+        st.session_state['go_explore'] = True
+        st.session_state['explore_payload'] = dict(target=target, k=k_target, n_min=n_min, n_max=n_max, trials=trials, threshold=threshold)
+except NameError:
+    pass
+
+if st.session_state['go_explore'] and st.session_state['explore_payload'] is not None:
+    st.divider()
+    st.subheader("Modo exploración (experimental)")
+    p = edge_prob
+    colors = num_colors
+    params = st.session_state['explore_payload']
+    n_vals, succ, probs = run_exploration(params['target'], params['k'], params['n_min'], params['n_max'], params['trials'], p, colors)
+
+    # Gráfica
+    fig = plt.figure(figsize=(6,3.5))
+    plt.plot(n_vals, probs, marker='o')
+    plt.axhline(params['threshold'], linestyle='--')
+    plt.ylim(0,1)
+    plt.xlabel('n')
+    plt.ylabel('Probabilidad de éxito')
+    plt.title(f"Patrón: {params['target']}  |  k={params['k']}  |  p={p}")
+    st.pyplot(fig)
+
+    # Primer n que cruza el umbral
+    n_star = next((n for n,pr in zip(n_vals, probs) if pr >= params['threshold']), None)
+    if n_star is not None:
+        st.success(f"Primer n con probabilidad ≥ {params['threshold']:.0%}: **n = {n_star}**")
+    else:
+        st.warning("Ningún n del rango alcanzó el umbral seleccionado.")
+
+    # Descargar CSV
+    csv = 'n,successes,trials,prob
+' + '
+'.join(f"{n},{s},{params['trials']},{p:.6f}" for n,s,p in zip(n_vals, succ, probs))
+    st.download_button("⬇️ Descargar resultados (CSV)", data=csv.encode('utf-8'), file_name='exploracion_ramsey.csv', mime='text/csv')
+
+    # Consumimos el disparador para evitar repetir automáticamente
+    st.session_state['go_explore'] = False
 
 # Subgrafos
 if mono_cliques or rain_cliques:
