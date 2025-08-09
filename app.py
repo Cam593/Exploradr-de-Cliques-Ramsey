@@ -12,6 +12,7 @@ import streamlit as st
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mpl  # acceso a mpl.colormaps
+from textwrap import dedent
 
 # ------------------------------------------------------------
 # 📚  Módulo de conocimiento: números de Ramsey clásicos (2 colores)
@@ -372,46 +373,41 @@ else:
 # ------------------------------------------------------------
 with st.expander("Detalles de implementación"):
     st.write(
-        "El grafo se genera con un modelo Erdős–Rényi \(G(n,p)\). "
-        "Para cada conjunto de \(k\) vértices se comprueba si forman un clique y si "
+        "El grafo se genera con un modelo Erdős–Rényi $G(n,p)$. "
+        "Para cada conjunto de $k$ vértices se comprueba si forman un clique y si "
         "cumplen la propiedad monocromática o arcoíris."
     )
 
 with st.expander("Conceptos clave ⋯", expanded=False):
-    st.markdown(
-        """
-        ## Vocabulario esencial
+    st.markdown(dedent(r"""
+    ## Vocabulario esencial
 
-        **Grafo:** estructura $G=(V,E)$ con vértices $V$ y aristas $E\subseteq\{\{u,v\}:u\ne v\}$.
-        Aquí usamos grafos **simples** y asignamos a cada arista un **color** 0,1,2,…
+    **Grafo:** estructura $G=(V,E)$ con vértices $V$ y aristas $E\subseteq\{\{u,v\}:u\ne v\}$.
+    Aquí usamos grafos **simples** y asignamos a cada arista un **color** 0,1,2,…
 
-        **Clique $K_k$:** subconjunto de $k$ vértices donde todas las aristas posibles están presentes
-        (subgrafo completo).  
-        • **Monocromático:** todas sus aristas comparten color.  
-        • **Arcoíris:** todas sus aristas tienen colores distintos.
+    **Clique $K_k$:** subconjunto de $k$ vértices donde todas las aristas posibles están presentes
+    (subgrafo completo).
+    - **Monocromático:** todas sus aristas comparten color.
+    - **Arcoíris:** todas sus aristas tienen colores distintos.
 
-        **2-coloración / Número de Ramsey clásico $R(s,t)$:**
-        el mínimo $n$ tal que, coloreando las aristas de $K_n$ en **dos colores** (rojo/azul),
-        siempre aparece un $K_s$ rojo **o** un $K_t$ azul.
+    **2-coloración / Número de Ramsey clásico $R(s,t)$:**
+    el mínimo $n$ tal que, coloreando las aristas de $K_n$ en **dos colores** (rojo/azul),
+    siempre aparece un $K_s$ rojo **o** un $K_t$ azul.
 
-        **Ejemplo (por qué $R(3,3)=6$):** en un $K_6$, fija un vértice $v$. De sus 5 aristas,
-        al menos 3 comparten color (palomar). Supón que $va,vb,vc$ son rojas.  
-        – Si alguna de $ab,bc,ac$ es roja ⇒ triángulo rojo.  
-        – Si no, las tres son azules ⇒ triángulo azul.  
-        En $K_5$ existe una 2-coloración sin triángulo monocromático, así que el mínimo es 6.
+    **Ejemplo (por qué $R(3,3)=6$):** en un $K_6$, fija un vértice $v$. De sus 5 aristas,
+    al menos 3 comparten color (palomar). Supón que $va,vb,vc$ son rojas.  
+    – Si alguna de $ab,bc,ac$ es roja ⇒ triángulo rojo.  
+    – Si no, las tres son azules ⇒ triángulo azul.  
+    En $K_5$ existe una 2-coloración sin triángulo monocromático, así que el mínimo es 6.
 
-        **Variantes arcoíris (Rainbow/Anti-Ramsey):**
-        con **varios colores**, preguntamos si aparece (i) un $K_k$ monocromático o (ii) un $K_k$
-        **arcoíris**. A esta disyuntiva la llamamos aquí *Ramsey arcoíris*. Muchos casos exactos están abiertos.
+    **Variantes arcoíris (Rainbow/Anti-Ramsey):** con **varios colores**, preguntamos si aparece
+    (i) un $K_k$ monocromático o (ii) un $K_k$ **arcoíris**. Muchos casos exactos están abiertos.
 
-        **¿Qué hace el *Modo exploración*?**
-        Para un $k$ y un rango de $n$, generamos muchos grafos $G(n,p)$ y estimamos la
-        **probabilidad empírica** de que exista el patrón objetivo. El primer $n$ que supera
-        un umbral (p. ej. 50%) sugiere desde qué tamaño el patrón es probable en promedio
-        (no es una prueba teórica).
-        """
-    )
-
+    **¿Qué hace el *Modo exploración*?** Para un $k$ y un rango de $n$, generamos muchos grafos
+    $G(n,p)$ y estimamos la **probabilidad empírica** de que exista el patrón objetivo. El primer $n$
+    que supera un umbral (p. ej. 50%) sugiere desde qué tamaño el patrón es probable en promedio
+    *(no es una prueba teórica)*.
+    """))
 # ------------------------------------------------------------
 # 📘  Demostraciones de Ramsey (fijas)
 # ------------------------------------------------------------
